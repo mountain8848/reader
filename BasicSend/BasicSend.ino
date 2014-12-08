@@ -2,35 +2,26 @@
 #include <SoftwareSerial.h>
 
 SoftwareSerial nss(2, 3);
-IridiumSBD isbd(nss, 10);
+IridiumSBD isbd(nss, 4);
 static const int ledPin = 13;
-int err = 0;
+
 
 // constants won't change. They're used here to 
 // set pin numbers:
 const int SentButtonPin = 6;     // the number of the sent pin
 const int SleepButtonPin = 5;     // the number of the sleep pin
 int err = 0;
-int sbd_sleep = 0;
-void setup()
+int sbd_work = 0;
+
+bool ISBDCallback()
 {
-  int signalQuality = -1;
-
-  pinMode(ledPin, OUTPUT);
-
-  Serial.begin(115200);
-  nss.begin(19200);
-
-  isbd.attachConsole(Serial);
-  isbd.attachDiags(Serial);
-  isbd.setPowerProfile(0);
- 
-
-  
+   digitalWrite(ledPin, (millis() / 1000) % 2 == 1 ? HIGH : LOW);
+   return true;
 }
 
-sent()
+void my_sbd_sent(void)
 {
+  int signalQuality = -1;
    isbd.begin();
   isbd.useMSSTMWorkaround(false);
 
@@ -56,37 +47,56 @@ sent()
   Serial.print("Messages left: ");
   Serial.println(isbd.getWaitingMessageCount()); 
 }
+
+void setup()
+{
+  
+
+  pinMode(ledPin, OUTPUT);
+  // initialize the pushbutton pin as an input:
+  pinMode(SentButtonPin, INPUT_PULLUP);   
+  // initialize the pushbutton pin as an input:
+  pinMode(SleepButtonPin, INPUT_PULLUP);     
+  
+  Serial.begin(115200);
+  nss.begin(19200);
+
+  isbd.attachConsole(Serial);
+  isbd.attachDiags(Serial);
+  isbd.setPowerProfile(0);
+ 
+
+  
+}
+
+
+
+///---------------------------------
 void loop()
 {
-  if ( (0 == digitalRead(SentButtonPin)) && 
-       (0 == sbd_sleep) {     
+  
+  if ( (LOW == digitalRead(SentButtonPin)) && 
+       (0 == sbd_work)) 
+  {   
+    Serial.println("[NOTE] sent......");
     // turn LED on:    
     digitalWrite(ledPin, HIGH); 
-    sbd_sleep = 1;
-    sent(); 
+    sbd_work = 1;
+    my_sbd_sent(); 
   } 
   
   // check and force sleep
-   if ( 0 == digitalRead(SleepButtonPin) )
-   {     
+   if ( LOW == digitalRead(SleepButtonPin) &&
+        1 == sbd_work)
+   {
+     Serial.println("[NOTE] sleep......");     
     // turn LED on:    
     digitalWrite(ledPin, HIGH); 
     isbd.sleep();
-    sbd_sleep = 0;
+    sbd_work = 0;
   }  
   
-
- // if it is, the buttonState is HIGH:
-  if (0 == digitalRead(SentButtonPin)) {     
-    // turn LED on:    
-    digitalWrite(ledPin, HIGH); 
-    sent(); 
-  }   
-     
+    
 }
 
-bool ISBDCallback()
-{
-   digitalWrite(ledPin, (millis() / 1000) % 2 == 1 ? HIGH : LOW);
-   return true;
-}
+
